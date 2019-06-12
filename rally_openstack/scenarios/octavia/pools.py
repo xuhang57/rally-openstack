@@ -1,4 +1,4 @@
-# Copyright 2018: Red Hat Inc.
+# Copyright 2019: Red Hat Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,139 +17,139 @@ from rally.task import validation
 
 from rally_openstack import consts
 from rally_openstack import scenario
-from rally_openstack.scenarios.octavia import utils
+from rally_openstack.scenarios.neutron import utils as neutron_utils
+from rally_openstack.scenarios.octavia import utils as octavia_utils
 
-"""Scenarios for Octavia Loadbalancer pools."""
+"""Scenarios for Octavia Pools."""
 
 
-@validation.add("required_services", services=[consts.Service.OCTAVIA])
+@validation.add("required_services", services=[consts.Service.OCTAVIA,
+                                               consts.Service.NEUTRON])
 @validation.add("required_platform", platform="openstack", users=True)
-@validation.add("required_contexts", contexts=["network"])
-@scenario.configure(context={"cleanup@openstack": ["octavia"]},
+@scenario.configure(context={"cleanup@openstack": ["octavia", "neutron"]},
                     name="Octavia.create_and_list_pools",
                     platform="openstack")
-class CreateAndListPools(utils.OctaviaBase):
+class CreateAndListPools(octavia_utils.OctaviaScenario,
+                         neutron_utils.NeutronScenario):
 
-    def run(self, protocol, lb_algorithm):
+    def run(self, pool_create_args, load_balancer_create_args=None):
         """Create a loadbalancer pool per each subnet and then pools.
 
-        :param protocol: protocol for which the pool listens
-        :param lb_algorithm: loadbalancer algorithm
+        :param load_balancer_create_args: dict
+            POST /v2/lbaas/loadbalancer request options
+        :param pool_create_args: dict
+            POST /v2/lbaas/pool request options
         """
-        subnets = []
         loadbalancers = []
-        networks = self.context.get("tenant", {}).get("networks", [])
-        for network in networks:
-            subnets.extend(network.get("subnets", []))
-        for subnet_id in subnets:
-            lb = self.octavia.load_balancer_create(
-                subnet_id=subnet_id)
+        subnets = self._list_subnets()
+        for subnet in subnets:
+            load_balancer_create_args["vip_subnet_id"] = subnet["id"]
+            lb = self._load_balancer_create(load_balancer_create_args)
             loadbalancers.append(lb)
-
         for loadbalancer in loadbalancers:
-            self.octavia.wait_for_loadbalancer_prov_status(loadbalancer)
-            self.octavia.pool_create(
+            self._wait_for_loadbalancer_prov_status(loadbalancer)
+            pool = self._pool_create(
                 lb_id=loadbalancer["loadbalancer"]["id"],
-                protocol=protocol, lb_algorithm=lb_algorithm)
-        self.octavia.pool_list()
+                pool_create_args=pool_create_args)
+            self._wait_for_pool_prov_status(pool)
+        self._pool_list()
 
 
-@validation.add("required_services", services=[consts.Service.OCTAVIA])
+@validation.add("required_services", services=[consts.Service.OCTAVIA,
+                                               consts.Service.NEUTRON])
 @validation.add("required_platform", platform="openstack", users=True)
-@validation.add("required_contexts", contexts=["network"])
-@scenario.configure(context={"cleanup@openstack": ["octavia"]},
+@scenario.configure(context={"cleanup@openstack": ["octavia", "neutron"]},
                     name="Octavia.create_and_delete_pools",
                     platform="openstack")
-class CreateAndDeletePools(utils.OctaviaBase):
+class CreateAndDeletePools(octavia_utils.OctaviaScenario,
+                           neutron_utils.NeutronScenario):
 
-    def run(self, protocol, lb_algorithm):
+    def run(self, pool_create_args, load_balancer_create_args=None):
         """Create a pool per each subnet and then delete pool
 
-        :param protocol: protocol for which the pool listens
-        :param lb_algorithm: loadbalancer algorithm
+        :param load_balancer_create_args: dict
+            POST /v2/lbaas/loadbalancer request options
+        :param pool_create_args: dict
+            POST /v2/lbaas/pool request options
         """
-        subnets = []
         loadbalancers = []
-        networks = self.context.get("tenant", {}).get("networks", [])
-        for network in networks:
-            subnets.extend(network.get("subnets", []))
-        for subnet_id in subnets:
-            lb = self.octavia.load_balancer_create(
-                subnet_id=subnet_id)
+        subnets = self._list_subnets()
+        for subnet in subnets:
+            load_balancer_create_args["vip_subnet_id"] = subnet["id"]
+            lb = self._load_balancer_create(load_balancer_create_args)
             loadbalancers.append(lb)
-
         for loadbalancer in loadbalancers:
-            self.octavia.wait_for_loadbalancer_prov_status(loadbalancer)
-            pools = self.octavia.pool_create(
+            self._wait_for_loadbalancer_prov_status(loadbalancer)
+            pool = self._pool_create(
                 lb_id=loadbalancer["loadbalancer"]["id"],
-                protocol=protocol, lb_algorithm=lb_algorithm)
-            self.octavia.pool_delete(pools["id"])
+                pool_create_args=pool_create_args)
+            self._wait_for_pool_prov_status(pool)
+            self._pool_delete(pool["pool"]["id"])
 
 
-@validation.add("required_services", services=[consts.Service.OCTAVIA])
+@validation.add("required_services", services=[consts.Service.OCTAVIA,
+                                               consts.Service.NEUTRON])
 @validation.add("required_platform", platform="openstack", users=True)
-@validation.add("required_contexts", contexts=["network"])
-@scenario.configure(context={"cleanup@openstack": ["octavia"]},
+@scenario.configure(context={"cleanup@openstack": ["octavia", "neutron"]},
                     name="Octavia.create_and_update_pools",
                     platform="openstack")
-class CreateAndUpdatePools(utils.OctaviaBase):
+class CreateAndUpdatePools(octavia_utils.OctaviaScenario,
+                           neutron_utils.NeutronScenario):
 
-    def run(self, protocol, lb_algorithm):
-        """Create a pool per each subnet and then update
+    def run(self, pool_create_args, pool_update_args,
+            load_balancer_create_args=None):
+        """Create a pool per each subnet and update
 
-        :param protocol: protocol for which the pool listens
-        :param lb_algorithm: loadbalancer algorithm
+        :param pool_create_args: dict
+            POST /v2/lbaas/pool request options
+        :param pool_update_args: dict
+            PUT /v2/lbaas/pool/{pool_id} request options
+        :param load_balancer_create_args: dict
+            POST /v2/lbaas/loadbalancer request options
         """
-        subnets = []
         loadbalancers = []
-        networks = self.context.get("tenant", {}).get("networks", [])
-        for network in networks:
-            subnets.extend(network.get("subnets", []))
-        for subnet_id in subnets:
-            lb = self.octavia.load_balancer_create(
-                subnet_id=subnet_id)
+        subnets = self._list_subnets()
+        for subnet in subnets:
+            load_balancer_create_args["vip_subnet_id"] = subnet["id"]
+            lb = self._load_balancer_create(load_balancer_create_args)
             loadbalancers.append(lb)
-
-        update_pool = {
-            "name": self.generate_random_name()
-        }
-
         for loadbalancer in loadbalancers:
-            self.octavia.wait_for_loadbalancer_prov_status(loadbalancer)
-            pools = self.octavia.pool_create(
+            self._wait_for_loadbalancer_prov_status(loadbalancer)
+            pool = self._pool_create(
                 lb_id=loadbalancer["loadbalancer"]["id"],
-                protocol=protocol, lb_algorithm=lb_algorithm)
-            self.octavia.pool_set(
-                pool_id=pools["id"], pool_update_args=update_pool)
+                pool_create_args=pool_create_args)
+            self._wait_for_pool_prov_status(pool)
+            self._pool_set(
+                pool_id=pool["pool"]["id"], pool_update_args=pool_update_args)
 
 
-@validation.add("required_services", services=[consts.Service.OCTAVIA])
+@validation.add("required_services", services=[consts.Service.OCTAVIA,
+                                               consts.Service.NEUTRON])
 @validation.add("required_platform", platform="openstack", users=True)
-@validation.add("required_contexts", contexts=["network"])
-@scenario.configure(context={"cleanup@openstack": ["octavia"]},
+@scenario.configure(context={"cleanup@openstack": ["octavia", "neutron"]},
                     name="Octavia.create_and_show_pools",
                     platform="openstack")
-class CreateAndShowPools(utils.OctaviaBase):
+class CreateAndShowPools(octavia_utils.OctaviaScenario,
+                         neutron_utils.NeutronScenario):
 
-    def run(self, protocol, lb_algorithm):
+    def run(self, pool_create_args, load_balancer_create_args=None):
         """Create a pool per each subnet and show it
 
-        :param protocol: protocol for which the pool listens
-        :param lb_algorithm: loadbalancer algorithm
+        :param load_balancer_create_args: dict
+            POST /v2/lbaas/loadbalancer request options
+        :param pool_create_args: dict
+            POST /v2/lbaas/pool request options
         """
-        subnets = []
         loadbalancers = []
-        networks = self.context.get("tenant", {}).get("networks", [])
-        for network in networks:
-            subnets.extend(network.get("subnets", []))
-        for subnet_id in subnets:
-            lb = self.octavia.load_balancer_create(
-                subnet_id=subnet_id)
+        subnets = self._list_subnets()
+        for subnet in subnets:
+            load_balancer_create_args["vip_subnet_id"] = subnet["id"]
+            lb = self._load_balancer_create(load_balancer_create_args)
             loadbalancers.append(lb)
-
         for loadbalancer in loadbalancers:
-            self.octavia.wait_for_loadbalancer_prov_status(loadbalancer)
-            pools = self.octavia.pool_create(
+            self._wait_for_loadbalancer_prov_status(loadbalancer)
+            pool = self._pool_create(
                 lb_id=loadbalancer["loadbalancer"]["id"],
-                protocol=protocol, lb_algorithm=lb_algorithm)
-            self.octavia.pool_show(pools["id"])
+                pool_create_args=pool_create_args)
+            self._wait_for_pool_prov_status(pool)
+            self._pool_show(pool["pool"]["id"])

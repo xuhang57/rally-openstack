@@ -61,7 +61,8 @@
       workloads:
       -
         scenario:
-          Octavia.create_and_update_loadbalancers: {}
+          Octavia.create_and_update_loadbalancers:
+              load_balancer_update_args: {}
         runner:
           constant:
             times: 2
@@ -116,8 +117,7 @@
       -
         scenario:
           Octavia.create_and_list_pools:
-            protocol: "HTTP"
-            lb_algorithm: "ROUND_ROBIN"
+              pool_create_args: {}
         runner:
           constant:
             times: 2
@@ -136,8 +136,7 @@
       -
         scenario:
           Octavia.create_and_delete_pools:
-            protocol: "HTTP"
-            lb_algorithm: "ROUND_ROBIN"
+              pool_create_args: {}
         runner:
           constant:
             times: 2
@@ -156,8 +155,8 @@
       -
         scenario:
           Octavia.create_and_update_pools:
-            protocol: "HTTP"
-            lb_algorithm: "ROUND_ROBIN"
+              pool_update_args: {}
+              pool_create_args: {}
         runner:
           constant:
             times: 2
@@ -176,8 +175,7 @@
       -
         scenario:
           Octavia.create_and_show_pools:
-            protocol: "HTTP"
-            lb_algorithm: "ROUND_ROBIN"
+              pool_create_args: {}
         runner:
           constant:
             times: 2

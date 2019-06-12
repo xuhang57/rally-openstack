@@ -1,7 +1,8 @@
 ---
   Octavia.create_and_show_loadbalancers:
     -
-      args: {}
+      args:
+        load_balancer_create_args: {}
       runner:
         type: "constant"
         times: 5

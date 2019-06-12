@@ -2,8 +2,12 @@
   Octavia.create_and_update_pools:
     -
       args:
-        protocol: "HTTP"
-        lb_algorithm: "ROUND_ROBIN"
+        pool_create_args:
+          protocol: "HTTP"
+          lb_algorithm: "ROUND_ROBIN"
+        pool_update_args:
+          name: "_updated"
+        load_balancer_create_args: {}
       runner:
         type: "constant"
         times: 5

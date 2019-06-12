@@ -1,4 +1,4 @@
-# Copyright 2018: Red Hat Inc.
+# Copyright 2019: Red Hat Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -17,225 +17,144 @@ from rally.task import validation
 
 from rally_openstack import consts
 from rally_openstack import scenario
+from rally_openstack.scenarios.neutron import utils as neutron_utils
 from rally_openstack.scenarios.octavia import utils as octavia_utils
 
 """Scenarios for Octavia Loadbalancer."""
 
 
-@validation.add("required_services", services=[consts.Service.OCTAVIA])
+@validation.add("required_services", services=[consts.Service.OCTAVIA,
+                                               consts.Service.NEUTRON])
 @validation.add("required_platform", platform="openstack", users=True)
-@validation.add("required_contexts", contexts=["network"])
-@scenario.configure(context={"cleanup@openstack": ["octavia"]},
+@scenario.configure(context={"cleanup@openstack": ["octavia", "neutron"]},
                     name="Octavia.create_and_list_loadbalancers",
                     platform="openstack")
-class CreateAndListLoadbalancers(octavia_utils.OctaviaBase):
+class CreateAndListLoadbalancers(octavia_utils.OctaviaScenario,
+                                 neutron_utils.NeutronScenario):
 
-    def run(self, description=None, admin_state=True,
-            listeners=None, flavor_id=None, provider=None,
-            vip_qos_policy_id=None):
-        """Create a loadbalancer per each subnet and then list loadbalancers.
+    def run(self, load_balancer_create_args=None):
+        """Create a load balancer and then list all load balancers
 
-        :param description: Human-readable description of the loadbalancer
-        :param admin_state: The administrative state of the loadbalancer,
-            which is up(true) or down(false)
-        :param listeners: The associated listener id, if any
-        :param flavor_id: The ID of the flavor
-        :param provider: Provider name for the loadbalancer
-        :param vip_qos_policy_id: The ID of the QoS policy
+        :param load_balancer_create_args: dict
+            POST /v2/lbaas/loadbalancer request options
         """
-        subnets = []
         loadbalancers = []
-        networks = self.context.get("tenant", {}).get("networks", [])
-        for network in networks:
-            subnets.extend(network.get("subnets", []))
-        for subnet_id in subnets:
-            lb = self.octavia.load_balancer_create(
-                subnet_id=subnet_id,
-                description=description,
-                admin_state=admin_state,
-                listeners=listeners,
-                flavor_id=flavor_id,
-                provider=provider,
-                vip_qos_policy_id=vip_qos_policy_id)
+        subnets = self._list_subnets()
+        for subnet in subnets:
+            load_balancer_create_args["vip_subnet_id"] = subnet["id"]
+            lb = self._load_balancer_create(load_balancer_create_args)
             loadbalancers.append(lb)
-
         for loadbalancer in loadbalancers:
-            self.octavia.wait_for_loadbalancer_prov_status(loadbalancer)
-        self.octavia.load_balancer_list()
+            self._wait_for_loadbalancer_prov_status(loadbalancer)
+        self._load_balancer_list()
 
 
-@validation.add("required_services", services=[consts.Service.OCTAVIA])
+@validation.add("required_services", services=[consts.Service.OCTAVIA,
+                                               consts.Service.NEUTRON])
 @validation.add("required_platform", platform="openstack", users=True)
-@validation.add("required_contexts", contexts=["network"])
-@scenario.configure(context={"cleanup@openstack": ["octavia"]},
+@scenario.configure(context={"cleanup@openstack": ["octavia", "neutron"]},
                     name="Octavia.create_and_delete_loadbalancers",
                     platform="openstack")
-class CreateAndDeleteLoadbalancers(octavia_utils.OctaviaBase):
+class CreateAndDeleteLoadbalancers(octavia_utils.OctaviaScenario,
+                                   neutron_utils.NeutronScenario):
 
-    def run(self, description=None, admin_state=True,
-            listeners=None, flavor_id=None, provider=None,
-            vip_qos_policy_id=None):
-        """Create a loadbalancer per each subnet and then delete loadbalancer
+    def run(self, load_balancer_create_args=None):
+        """Create a load balancer per each subnet and delete loadbalancer
 
-        :param description: Human-readable description of the loadbalancer
-        :param admin_state: The administrative state of the loadbalancer,
-            which is up(true) or down(false)
-        :param listeners: The associated listener id, if any
-        :param flavor_id: The ID of the flavor
-        :param provider: Provider name for the loadbalancer
-        :param vip_qos_policy_id: The ID of the QoS policy
+        :param load_balancer_create_args: dict
+            POST /v2/lbaas/loadbalancer request options
         """
-        subnets = []
         loadbalancers = []
-        networks = self.context.get("tenant", {}).get("networks", [])
-        for network in networks:
-            subnets.extend(network.get("subnets", []))
-        for subnet_id in subnets:
-            lb = self.octavia.load_balancer_create(
-                subnet_id=subnet_id,
-                description=description,
-                admin_state=admin_state,
-                listeners=listeners,
-                flavor_id=flavor_id,
-                provider=provider,
-                vip_qos_policy_id=vip_qos_policy_id)
+        subnets = self._list_subnets()
+        for subnet in subnets:
+            load_balancer_create_args["vip_subnet_id"] = subnet["id"]
+            lb = self._load_balancer_create(load_balancer_create_args)
             loadbalancers.append(lb)
-
         for loadbalancer in loadbalancers:
-            self.octavia.wait_for_loadbalancer_prov_status(loadbalancer)
-            self.octavia.load_balancer_delete(
+            self._wait_for_loadbalancer_prov_status(loadbalancer)
+            self._load_balancer_delete(
                 loadbalancer["loadbalancer"]["id"])
 
 
-@validation.add("required_services", services=[consts.Service.OCTAVIA])
+@validation.add("required_services", services=[consts.Service.OCTAVIA,
+                                               consts.Service.NEUTRON])
 @validation.add("required_platform", platform="openstack", users=True)
-@validation.add("required_contexts", contexts=["network"])
-@scenario.configure(context={"cleanup@openstack": ["octavia"]},
+@scenario.configure(context={"cleanup@openstack": ["octavia", "neutron"]},
                     name="Octavia.create_and_update_loadbalancers",
                     platform="openstack")
-class CreateAndUpdateLoadBalancers(octavia_utils.OctaviaBase):
+class CreateAndUpdateLoadBalancers(octavia_utils.OctaviaScenario,
+                                   neutron_utils.NeutronScenario):
 
-    def run(self, description=None, admin_state=True,
-            listeners=None, flavor_id=None, provider=None,
-            vip_qos_policy_id=None):
-        """Create a loadbalancer per each subnet and then update
+    def run(self, load_balancer_update_args, load_balancer_create_args=None):
+        """Create a loadbalancer per each subnet and update loadbalancer
 
-        :param description: Human-readable description of the loadbalancer
-        :param admin_state: The administrative state of the loadbalancer,
-            which is up(true) or down(false)
-        :param listeners: The associated listener id, if any
-        :param flavor_id: The ID of the flavor
-        :param provider: Provider name for the loadbalancer
-        :param vip_qos_policy_id: The ID of the QoS policy
+        :param load_balancer_update_args: dict, PUT /v2/lbaas/loadbalancer
+                                          update request
+        :param load_balancer_create_args: dict, POST /v2/lbaas/loadbalancer
+                                          request options
         """
-        subnets = []
         loadbalancers = []
-        networks = self.context.get("tenant", {}).get("networks", [])
-        for network in networks:
-            subnets.extend(network.get("subnets", []))
-        for subnet_id in subnets:
-            lb = self.octavia.load_balancer_create(
-                subnet_id=subnet_id,
-                description=description,
-                admin_state=admin_state,
-                listeners=listeners,
-                flavor_id=flavor_id,
-                provider=provider,
-                vip_qos_policy_id=vip_qos_policy_id)
+        subnets = self._list_subnets()
+        for subnet in subnets:
+            load_balancer_create_args["vip_subnet_id"] = subnet["id"]
+            lb = self._load_balancer_create(load_balancer_create_args)
             loadbalancers.append(lb)
-
-            update_loadbalancer = {
-                "name": self.generate_random_name()
-            }
-
         for loadbalancer in loadbalancers:
-            self.octavia.wait_for_loadbalancer_prov_status(loadbalancer)
-            self.octavia.load_balancer_set(
-                lb_id=loadbalancer["loadbalancer"]["id"],
-                lb_update_args=update_loadbalancer)
+            self._wait_for_loadbalancer_prov_status(loadbalancer)
+            self._load_balancer_set(
+                loadbalancer["loadbalancer"]["id"],
+                load_balancer_update_args)
 
 
-@validation.add("required_services", services=[consts.Service.OCTAVIA])
+@validation.add("required_services", services=[consts.Service.OCTAVIA,
+                                               consts.Service.NEUTRON])
 @validation.add("required_platform", platform="openstack", users=True)
-@validation.add("required_contexts", contexts=["network"])
-@scenario.configure(context={"cleanup@openstack": ["octavia"]},
+@scenario.configure(context={"cleanup@openstack": ["octavia", "neutron"]},
                     name="Octavia.create_and_stats_loadbalancers",
                     platform="openstack")
-class CreateAndShowStatsLoadBalancers(octavia_utils.OctaviaBase):
+class CreateAndShowStatsLoadBalancers(octavia_utils.OctaviaScenario,
+                                      neutron_utils.NeutronScenario):
 
-    def run(self, description=None, admin_state=True,
-            listeners=None, flavor_id=None, provider=None,
-            vip_qos_policy_id=None):
+    def run(self, load_balancer_create_args=None):
         """Create a loadbalancer per each subnet and stats
 
-        :param description: Human-readable description of the loadbalancer
-        :param admin_state: The administrative state of the loadbalancer,
-            which is up(true) or down(false)
-        :param listeners: The associated listener id, if any
-        :param flavor_id: The ID of the flavor
-        :param provider: Provider name for the loadbalancer
-        :param vip_qos_policy_id: The ID of the QoS policy
+        :param load_balancer_create_args: dict
+            POST /v2/lbaas/loadbalancer request options
         """
-        subnets = []
         loadbalancers = []
-        networks = self.context.get("tenant", {}).get("networks", [])
-        for network in networks:
-            subnets.extend(network.get("subnets", []))
-        for subnet_id in subnets:
-            lb = self.octavia.load_balancer_create(
-                subnet_id=subnet_id,
-                description=description,
-                admin_state=admin_state,
-                listeners=listeners,
-                flavor_id=flavor_id,
-                provider=provider,
-                vip_qos_policy_id=vip_qos_policy_id)
+        subnets = self._list_subnets()
+        for subnet in subnets:
+            load_balancer_create_args["vip_subnet_id"] = subnet["id"]
+            lb = self._load_balancer_create(load_balancer_create_args)
             loadbalancers.append(lb)
-
         for loadbalancer in loadbalancers:
-            self.octavia.wait_for_loadbalancer_prov_status(loadbalancer)
-            self.octavia.load_balancer_stats_show(
-                loadbalancer["loadbalancer"])
+            self._wait_for_loadbalancer_prov_status(loadbalancer)
+            self._load_balancer_stats_show(
+                loadbalancer["loadbalancer"]["id"])
 
 
-@validation.add("required_services", services=[consts.Service.OCTAVIA])
+@validation.add("required_services", services=[consts.Service.OCTAVIA,
+                                               consts.Service.NEUTRON])
 @validation.add("required_platform", platform="openstack", users=True)
-@validation.add("required_contexts", contexts=["network"])
-@scenario.configure(context={"cleanup@openstack": ["octavia"]},
+@scenario.configure(context={"cleanup@openstack": ["octavia", "neutron"]},
                     name="Octavia.create_and_show_loadbalancers",
                     platform="openstack")
-class CreateAndShowLoadBalancers(octavia_utils.OctaviaBase):
+class CreateAndShowLoadBalancers(octavia_utils.OctaviaScenario,
+                                 neutron_utils.NeutronScenario):
 
-    def run(self, description=None, admin_state=True,
-            listeners=None, flavor_id=None, provider=None,
-            vip_qos_policy_id=None):
-        """Create a loadbalancer per each subnet and then compare
+    def run(self, load_balancer_create_args=None):
+        """Create a loadbalancer per each subnet and show
 
-        :param description: Human-readable description of the loadbalancer
-        :param admin_state: The administrative state of the loadbalancer,
-            which is up(true) or down(false)
-        :param listeners: The associated listener id, if any
-        :param flavor_id: The ID of the flavor
-        :param provider: Provider name for the loadbalancer
-        :param vip_qos_policy_id: The ID of the QoS policy
+        :param load_balancer_create_args: dict
+            POST /v2/lbaas/loadbalancer request options
         """
-        subnets = []
         loadbalancers = []
-        networks = self.context.get("tenant", {}).get("networks", [])
-        for network in networks:
-            subnets.extend(network.get("subnets", []))
-        for subnet_id in subnets:
-            lb = self.octavia.load_balancer_create(
-                subnet_id=subnet_id,
-                description=description,
-                admin_state=admin_state,
-                listeners=listeners,
-                flavor_id=flavor_id,
-                provider=provider,
-                vip_qos_policy_id=vip_qos_policy_id)
+        subnets = self._list_subnets()
+        for subnet in subnets:
+            load_balancer_create_args["vip_subnet_id"] = subnet["id"]
+            lb = self._load_balancer_create(load_balancer_create_args)
             loadbalancers.append(lb)
-
         for loadbalancer in loadbalancers:
-            self.octavia.wait_for_loadbalancer_prov_status(loadbalancer)
-            self.octavia.load_balancer_show(
-                loadbalancer["loadbalancer"])
+            self._wait_for_loadbalancer_prov_status(loadbalancer)
+            self._load_balancer_show(
+                loadbalancer["loadbalancer"]["id"])

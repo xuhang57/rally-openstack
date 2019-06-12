@@ -1,7 +1,9 @@
 {
     "Octavia.create_and_delete_loadbalancers": [
         {
-             "args": {},
+             "args": {
+                 "load_balancer_create_args": {}
+             },
              "runner": {
                  "type": "constant",
                  "times": 5,

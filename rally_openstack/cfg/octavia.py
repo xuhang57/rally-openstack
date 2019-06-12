@@ -1,4 +1,4 @@
-# Copyright 2018: Red Hat Inc.
+# Copyright 2019: Red Hat Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -24,5 +24,11 @@ OPTS = {"openstack": [
                  help="Octavia delete loadbalancer timeout"),
     cfg.FloatOpt("octavia_create_loadbalancer_poll_interval",
                  default=float(2.0),
-                 help="Octavia create loadbalancer poll interval")
+                 help="Octavia create loadbalancer poll interval"),
+    cfg.FloatOpt("octavia_create_pool_timeout",
+                 default=float(500.0),
+                 help="Octavia create pool timeout"),
+    cfg.FloatOpt("octavia_create_pool_poll_interval",
+                 default=float(2.0),
+                 help="Octavia create pool poll interval")
 ]}

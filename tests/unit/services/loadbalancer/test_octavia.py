@@ -1,4 +1,4 @@
-# Copyright 2018: Red Hat Inc.
+# Copyright 2019: Red Hat Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -52,65 +52,6 @@ class LoadBalancerServiceTestCase(test.TestCase):
     def atomic_actions(self):
         return self.service._atomic_actions
 
-    def test_load_balancer_list(self):
-        self.service.load_balancer_list(),
-        self.service._clients.octavia().load_balancer_list \
-            .assert_called_once_with()
-        self._test_atomic_action_timer(self.atomic_actions(),
-                                       "octavia.load_balancer_list")
-
-    def test_load_balancer_show(self):
-        lb = {"id": "loadbalancer-id"}
-        self.service.load_balancer_show(lb)
-        self.service._clients.octavia().load_balancer_show \
-            .assert_called_once_with(lb["id"])
-        self._test_atomic_action_timer(self.atomic_actions(),
-                                       "octavia.load_balancer_show")
-
-    def test_load_balancer_create(self):
-        self.service.generate_random_name = mock.MagicMock(
-            return_value="lb")
-        self.service.load_balancer_create("subnet_id")
-        self.service._clients.octavia().load_balancer_create \
-            .assert_called_once_with(json={
-                "loadbalancer": {"name": "lb",
-                                 "admin_state_up": True,
-                                 "vip_qos_policy_id": None,
-                                 "listeners": None,
-                                 "provider": None,
-                                 "vip_subnet_id": "subnet_id",
-                                 "description": None}})
-        self._test_atomic_action_timer(self.atomic_actions(),
-                                       "octavia.load_balancer_create")
-
-    def test_load_balancer_delete(self):
-        self.service.load_balancer_delete("lb-id")
-        self.service._clients.octavia().load_balancer_delete \
-            .assert_called_once_with("lb-id", cascade=False)
-        self._test_atomic_action_timer(self.atomic_actions(),
-                                       "octavia.load_balancer_delete")
-
-    def test_load_balancer_set(self):
-        self.service.generate_random_name = mock.MagicMock(
-            return_value="new_lb")
-        lb_update_args = {"name": "new_lb_name"}
-        self.service.load_balancer_set(
-            "lb-id", lb_update_args=lb_update_args)
-        self.service._clients.octavia().load_balancer_set \
-            .assert_called_once_with(
-                "lb-id", json={"loadbalancer": {"name": "new_lb_name"}})
-        self._test_atomic_action_timer(self.atomic_actions(),
-                                       "octavia.load_balancer_set")
-
-    def test_load_balancer_stats_show(self):
-        lb = {"id": "new_lb"}
-        self.assertEqual(
-            self.service.load_balancer_stats_show(lb, kwargs={}),
-            self.service._clients.octavia()
-                .load_balancer_stats_show.return_value)
-        self._test_atomic_action_timer(self.atomic_actions(),
-                                       "octavia.load_balancer_stats_show")
-
     def test_load_balancer_failover(self):
         lb = {"id": "new_lb"}
         self.service.load_balancer_failover(lb)
@@ -161,19 +102,6 @@ class LoadBalancerServiceTestCase(test.TestCase):
         self._test_atomic_action_timer(self.atomic_actions(),
                                        "octavia.listener_stats_show")
 
-    def test_pool_list(self):
-        self.service.pool_list()
-        self.service._clients.octavia().pool_list \
-            .assert_called_once_with()
-        self._test_atomic_action_timer(self.atomic_actions(),
-                                       "octavia.pool_list")
-
-    def test_update_pool_resource(self):
-        fake_pool = {"id": "pool-id"}
-        self.service.update_pool_resource(fake_pool)
-        self.service._clients.octavia().pool_show \
-            .assert_called_once_with("pool-id")
-
     def test_update_pool_resource_fail_404(self):
         fake_pool = {"id": "pool-id"}
         ex = Exception()
@@ -190,53 +118,6 @@ class LoadBalancerServiceTestCase(test.TestCase):
         self.assertRaises(
             exceptions.GetResourceFailure,
             self.service.update_pool_resource, fake_pool)
-
-    def test_pool_create(self):
-        self.service.generate_random_name = mock.MagicMock(
-            return_value="pool")
-        self.service.pool_create(
-            lb_id="loadbalancer-id",
-            protocol="HTTP",
-            lb_algorithm="ROUND_ROBIN")
-        self.service._clients.octavia().pool_create \
-            .assert_called_once_with(
-                json={"pool": {
-                    "lb_algorithm": "ROUND_ROBIN",
-                    "protocol": "HTTP",
-                    "description": None,
-                    "admin_state_up": True,
-                    "session_persistence": None,
-                    "loadbalancer_id": "loadbalancer-id",
-                    "name": "pool"}})
-
-        self._test_atomic_action_timer(self.atomic_actions(),
-                                       "octavia.pool_create")
-
-    def test_pool_delete(self):
-        self.service.pool_delete(pool_id="fake_pool")
-        self.service._clients.octavia().pool_delete \
-            .assert_called_once_with("fake_pool")
-        self._test_atomic_action_timer(self.atomic_actions(),
-                                       "octavia.pool_delete")
-
-    def test_pool_show(self):
-        self.service.pool_show(pool_id="fake_pool")
-        self.service._clients.octavia().pool_show \
-            .assert_called_once_with("fake_pool")
-        self._test_atomic_action_timer(self.atomic_actions(),
-                                       "octavia.pool_show")
-
-    def test_pool_set(self):
-        pool_update_args = {"name": "new-pool-name"}
-        self.service.pool_set(
-            pool_id="fake_pool",
-            pool_update_args=pool_update_args)
-        self.service._clients.octavia().pool_set \
-            .assert_called_once_with(
-                "fake_pool",
-                json={"pool": {"name": "new-pool-name"}})
-        self._test_atomic_action_timer(self.atomic_actions(),
-                                       "octavia.pool_set")
 
     def test_member_list(self):
         self.service.member_list(pool_id="fake_pool")
@@ -430,12 +311,6 @@ class LoadBalancerServiceTestCase(test.TestCase):
             .assert_called_once_with()
         self._test_atomic_action_timer(self.atomic_actions(),
                                        "octavia.amphora_list")
-
-    def test_update_loadbalancer_resource(self):
-        fake_lb = {"id": "fake_lb"}
-        self.service.update_loadbalancer_resource(lb=fake_lb)
-        self.service._clients.octavia().load_balancer_show \
-            .assert_called_once_with("fake_lb")
 
     def test_update_loadbalancer_resource_fail_404(self):
         fake_lb = {"id": "fake_lb"}

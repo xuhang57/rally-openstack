@@ -1,7 +1,12 @@
 {
     "Octavia.create_and_update_loadbalancers": [
         {
-             "args": {},
+             "args": {
+                "load_balancer_update_args": {
+                    "name": "_updated"
+                },
+                "load_balancer_create_args": {}
+             },
              "runner": {
                  "type": "constant",
                  "times": 5,
