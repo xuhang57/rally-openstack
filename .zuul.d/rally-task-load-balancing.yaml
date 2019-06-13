@@ -8,19 +8,44 @@
       - name: openstack/rally
       - name: openstack/rally-openstack
       - name: openstack/neutron-lbaas
+      - name: openstack/neutron
+      - name: openstack/nova
+      - name: openstack/glance
       - name: openstack/octavia
+      - name: openstack/python-octaviaclient
     vars:
       devstack_plugins:
         rally-openstack: https://opendev.org/openstack/rally-openstack
         neutron-lbaas: https://opendev.org/openstack/neutron-lbaas
         octavia: https://opendev.org/openstack/octavia
+        barbican: https://opendev.org/openstack/barbican
+        neutron: https://opendev.org/openstack/neutron
       devstack_services:
         neutron-lbaas: true
+        key: true
+        rabbit: true
+        mysql: true
+        n-api: true
+        n-obj: true
+        n-cpu: true
+        n-cond: true
+        n-sch: true
+        placement-api: true
+        placement-client: true
+        g-api: true
+        g-reg: true
+        neutron-api: true
+        neutron-agent: true
+        neutron-dhcp: true
+        neutron-l3: true
+        neutron-metadata-agent: true
+        neutron-qos: true
         octavia: true
         o-api: true
         o-cw: true
         o-hm: true
         o-hk: true
+        o-da: true
         # disable redundant services for the job
         ceilometer-acentral: false
         ceilometer-acompute: false

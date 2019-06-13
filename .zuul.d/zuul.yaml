@@ -34,8 +34,7 @@
             voting: false
         - rally-task-ironic
         - rally-task-keystone-glance-swift
-        - rally-task-load-balancing:
-            voting: false
+        - rally-task-load-balancing
         - rally-task-magnum:
             voting: false
             files:
